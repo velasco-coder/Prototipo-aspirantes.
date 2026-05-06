@@ -12,11 +12,32 @@ Aplicacion estatica para simular el flujo principal de admision:
 
 No usa base de datos, backend, APIs externas ni login real. Todos los cambios viven en memoria y se pierden al recargar la pagina.
 
+## Como subirlo a GitHub y Render
+
+La guia completa esta en `DEPLOY_GITHUB_RENDER.md`.
+
+Para Render, este prototipo se publica como `Static Site`. No requiere comando de build. Si subes solo esta carpeta como repositorio, usa:
+
+```txt
+Build Command: dejar vacio
+Publish Directory: .
+```
+
+Si subes todo el proyecto completo, en Render usa:
+
+```txt
+Root Directory: prueba
+Build Command: dejar vacio
+Publish Directory: .
+```
+
 ## Archivos
 
 - `index.html`: entrada de la aplicacion.
 - `styles.css`: estilos del prototipo.
 - `app.js`: datos mock, reglas de negocio y renderizado.
+- `DEPLOY_GITHUB_RENDER.md`: pasos para subir a GitHub y publicar en Render.
+- `render.yaml`: configuracion opcional para Render Blueprint.
 
 ## Roles simulados
 
