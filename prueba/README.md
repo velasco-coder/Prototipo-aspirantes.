@@ -31,6 +31,8 @@ Build Command: dejar vacio
 Publish Directory: .
 ```
 
+Si la pagina se ve sin diseno en celular, revisa que Render este sirviendo `styles.css`. Abre `/styles.css` en tu URL de Render; si no aparece codigo CSS, corrige `Root Directory` a `prueba`.
+
 ## Archivos
 
 - `index.html`: entrada de la aplicacion.

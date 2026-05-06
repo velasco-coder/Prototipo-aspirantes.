@@ -103,6 +103,35 @@ Build Command: dejar vacio
 Publish Directory: .
 ```
 
+## Si en celular se ve sin estilos
+
+Si la pagina aparece con letra basica, botones grises del navegador y tablas sin diseno, significa que `index.html` y `app.js` cargaron, pero `styles.css` no se esta aplicando.
+
+Revisa esto en Render:
+
+```txt
+Service Type: Static Site
+Root Directory: prueba
+Build Command: dejar vacio
+Publish Directory: .
+```
+
+Despues entra a:
+
+```txt
+Manual Deploy -> Clear build cache & deploy
+```
+
+Tambien puedes probar abriendo directamente esta ruta en el navegador:
+
+```txt
+https://TU-SITIO.onrender.com/styles.css
+```
+
+Si ves codigo CSS, el archivo existe y probablemente era cache del navegador. Cierra la pestana o recarga con limpieza de cache.
+
+Si ves una pagina HTML o un error 404, Render esta publicando una carpeta incorrecta. En ese caso corrige `Root Directory` a `prueba` y `Publish Directory` a `.`.
+
 ## Configuracion con Blueprint
 
 Tambien puedes usar el archivo `render.yaml` incluido en esta carpeta.
@@ -165,4 +194,3 @@ render.yaml
 ```
 
 Para probarlo localmente, abre `index.html` en el navegador.
-
