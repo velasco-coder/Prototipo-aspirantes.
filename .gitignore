@@ -1,0 +1,19 @@
+# Sistema operativo y editores
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Dependencias y salidas generadas
+node_modules/
+dist/
+build/
+coverage/
+
+# Archivos temporales
+*.log
+*.tmp
+*.temp
+~$*
+
