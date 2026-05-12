@@ -7,10 +7,20 @@ Aplicacion estatica para simular el flujo principal de admision:
 ## Como ejecutarlo
 
 1. Abre `index.html` en tu navegador.
-2. Cambia de rol desde la barra superior.
+2. Inicia sesion con alguna cuenta de prueba.
 3. Usa los datos mock incluidos para probar el flujo.
 
-No usa base de datos, backend, APIs externas ni login real. Todos los cambios viven en memoria y se pierden al recargar la pagina.
+No usa base de datos, backend, APIs externas ni autenticacion real. El inicio de sesion es simulado con credenciales mock dentro del codigo. Todos los cambios viven en memoria y se pierden al recargar la pagina.
+
+## Credenciales de prueba
+
+| Tipo de acceso | Correo | Contrasena | Panel |
+| --- | --- | --- | --- |
+| Aspirante | `aspirante@correo.com` | `Aspirante123` | Panel del aspirante |
+| Institucional | `admisiones@utem.edu.mx` | `Admisiones123` | Responsable de Admisiones |
+| Institucional | `inscripciones@utem.edu.mx` | `Inscripciones123` | Responsable de Inscripciones |
+| Institucional | `director.academico@utem.edu.mx` | `Academico123` | Director Academico |
+| Institucional | `director.carrera@utem.edu.mx` | `Carrera123` | Director de Carrera |
 
 ## Como subirlo a GitHub y Render
 
@@ -52,6 +62,7 @@ Si la pagina se ve sin diseno en celular, revisa que Render este sirviendo `styl
 ## Reglas implementadas
 
 - La aplicacion incluye una guia del proyecto, glosario y matriz de estados.
+- El prototipo inicia con acceso separado para aspirante e institucional.
 - El pago de inscripcion esta separado de los documentos academicos.
 - El registro valida CURP, correo, telefono, promedio y duplicidad de CURP.
 - No se captura resultado CENEVAL si el pago CENEVAL no fue validado.
@@ -59,11 +70,12 @@ Si la pagina se ve sin diseno en celular, revisa que Render este sirviendo `styl
 - No se inscribe al alumno si faltan documentos validos.
 - No se inscribe al alumno si falta pago de inscripcion validado.
 - Los estados se muestran visualmente con badges.
-- El cambio de rol no requiere autenticacion real.
+- El rol se asigna segun la cuenta mock usada en el login simulado.
 
 ## Mejoras aplicadas despues del analisis
 
 - Se agregaron vistas compartidas: `Guia del proyecto`, `Matriz de estados` y `Reglas y permisos`.
+- Se agrego una pantalla inicial de acceso aspirante/institucional.
 - Se normalizaron conceptos como aspirante, aceptado, nuevo ingreso, alumno, folio y numero de control.
 - Se reforzo el flujo de estados para que el prototipo sea mas entendible.
 - Se documentaron dentro de la interfaz las reglas de negocio principales.
