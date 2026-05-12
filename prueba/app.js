@@ -123,6 +123,7 @@
       "Acta de nacimiento",
       "Certificado de bachillerato",
       "Comprobante de domicilio",
+      "Foto del aspirante",
     ],
     glossary: [
       ["Aspirante", "Persona registrada para participar en el proceso de admision."],
@@ -141,6 +142,7 @@
       "No se da de alta como alumno si faltan documentos validos.",
       "No se da de alta como alumno si falta pago de inscripcion validado.",
       "El cambio de carrera se solicita y lo resuelve Direccion Academica; no se aplica automaticamente desde el aspirante.",
+      "El aspirante solo puede consultar el expediente asociado a su sesion.",
     ],
     acceptedStates: [
       STATES.ACCEPTED,
@@ -169,8 +171,8 @@
     transitionMatrix: [
       [STATES.REGISTERED, "Generar ficha CENEVAL", STATES.CENEVAL_PAYMENT_PENDING, "Aspirante"],
       [STATES.CENEVAL_PAYMENT_PENDING, "Subir comprobante CENEVAL", STATES.CENEVAL_PAYMENT_UPLOADED, "Aspirante"],
-      [STATES.CENEVAL_PAYMENT_UPLOADED, "Validar pago CENEVAL", STATES.EVALUATION_PENDING, "Responsable de Admisiones"],
-      [STATES.CENEVAL_PAYMENT_UPLOADED, "Rechazar pago CENEVAL", STATES.CENEVAL_PAYMENT_REJECTED, "Responsable de Admisiones"],
+      [STATES.CENEVAL_PAYMENT_UPLOADED, "Validar comprobante CENEVAL", STATES.EVALUATION_PENDING, "Responsable de Admisiones"],
+      [STATES.CENEVAL_PAYMENT_UPLOADED, "Rechazar comprobante CENEVAL", STATES.CENEVAL_PAYMENT_REJECTED, "Responsable de Admisiones"],
       [STATES.EVALUATION_PENDING, "Capturar puntaje CENEVAL", STATES.EVALUATED, "Responsable de Admisiones"],
       [STATES.EVALUATED, "Aceptar aspirante", STATES.ACCEPTED, "Responsable de Admisiones"],
       [STATES.EVALUATED, "No aceptar aspirante", STATES.NOT_ACCEPTED, "Responsable de Admisiones"],
@@ -185,7 +187,6 @@
       aspirante: [
         { id: "registro", label: "Registro" },
         { id: "portal_aspirante", label: "Panel del aspirante" },
-        ...sharedViews,
       ],
       admisiones: [
         { id: "panel_admisiones", label: "Aspirantes y CENEVAL" },
@@ -226,6 +227,9 @@
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
+    },
+    documentExtension(name) {
+      return name.toLowerCase().includes("foto") ? "jpg" : "pdf";
     },
     list(items) {
       return items.join("");
@@ -357,7 +361,7 @@
       return CONFIG.requiredDocuments.map((name) => ({
         name,
         status,
-        fileName: status === "pendiente" ? "" : `${Utils.slugify(name)}.pdf`,
+        fileName: status === "pendiente" ? "" : `${Utils.slugify(name)}.${Utils.documentExtension(name)}`,
         observation: "",
       }));
     },
@@ -424,6 +428,9 @@
       return state.applicants.find((applicant) => applicant.id === Number(id));
     },
     selectedApplicant() {
+      if (state.session?.role === "aspirante" && state.session.applicantId) {
+        return Selectors.applicantById(state.session.applicantId) || state.applicants[0];
+      }
       return Selectors.applicantById(state.selectedApplicantId) || state.applicants[0];
     },
     filteredApplicants() {
@@ -522,6 +529,11 @@
     resetData() {
       state.applicants = Factory.applicants();
       state.selectedApplicantId = 1;
+      if (state.session?.role === "aspirante") {
+        const applicant = state.applicants[0];
+        state.session.applicantId = applicant.id;
+        state.session.name = Rules.fullName(applicant);
+      }
       state.filter = "";
       state.validationErrors = [];
     },
@@ -564,6 +576,10 @@
     addApplicant(applicant) {
       state.applicants.push(applicant);
       state.selectedApplicantId = applicant.id;
+      if (state.session?.role === "aspirante") {
+        state.session.applicantId = applicant.id;
+        state.session.name = Rules.fullName(applicant);
+      }
       state.view = "portal_aspirante";
       state.validationErrors = [];
     },
@@ -678,6 +694,10 @@
       `;
     },
     sidebar() {
+      const resetHelp =
+        state.role === "aspirante"
+          ? "El reinicio solo sirve para esta demostracion: restaura los datos mock y borra cambios hechos durante la prueba."
+          : "Modo prueba: restaura aspirantes, pagos y documentos simulados.";
       return `
         <aside class="sidebar">
           <p class="sidebar-title">Menu de prueba</p>
@@ -695,6 +715,7 @@
           <div class="actions">
             <button class="button secondary" data-action="reset-data">Reiniciar datos</button>
           </div>
+          <p class="sidebar-help">${resetHelp}</p>
         </aside>
       `;
     },
@@ -1051,7 +1072,7 @@
             </div>
           </form>
         </section>
-        ${Components.applicantTable(state.applicants, "Aspirantes de prueba")}
+        ${state.role === "aspirante" ? "" : Components.applicantTable(state.applicants, "Aspirantes de prueba")}
       `;
     },
     applicantPortal() {
@@ -1080,6 +1101,21 @@
       `;
     },
     applicantSelector() {
+      if (state.session?.role === "aspirante") {
+        const applicant = Selectors.selectedApplicant();
+        return `
+          <section class="panel">
+            <h3>Expediente de la sesion</h3>
+            <p class="muted">Estas consultando solamente la cuenta asociada a tu acceso de aspirante.</p>
+            <div class="definition-list compact">
+              <div><strong>Aspirante</strong><span>${Rules.fullName(applicant)}</span></div>
+              <div><strong>Correo</strong><span>${applicant.correo}</span></div>
+              <div><strong>Folio</strong><span>${applicant.folio}</span></div>
+            </div>
+          </section>
+        `;
+      }
+
       return `
         <section class="panel">
           <div class="grid two">
@@ -1154,6 +1190,9 @@
       return `
         <section class="panel">
           <h3>Solicitud de cambio de carrera</h3>
+          <div class="notice">
+            El cambio de carrera es una solicitud sujeta a revision por Direccion Academica. Enviarla no garantiza que el cambio sea aprobado.
+          </div>
           <form id="change-career-form" class="grid">
             ${Components.selectField("careerTarget", "Carrera solicitada", CONFIG.careers.filter((career) => career !== applicant.carrera), careerTarget)}
             <div class="field">
@@ -1180,6 +1219,9 @@
         ])}
         <section class="panel">
           <h3>Listado de aspirantes</h3>
+          <div class="notice">
+            Desactivar un aspirante no elimina su expediente; solo suspende su avance dentro del proceso hasta que sea reactivado.
+          </div>
           ${Views.admissionsTable(applicants)}
         </section>
       `;
@@ -1214,8 +1256,8 @@
                       <td>${applicant.resultadoCeneval ?? "Sin resultado"}</td>
                       <td>
                         <div class="table-actions">
-                          <button class="button small success" data-action="validate-ceneval" data-id="${applicant.id}" ${applicant.estado !== STATES.CENEVAL_PAYMENT_UPLOADED ? "disabled" : ""}>Validar pago</button>
-                          <button class="button small danger" data-action="reject-ceneval" data-id="${applicant.id}" ${applicant.estado !== STATES.CENEVAL_PAYMENT_UPLOADED ? "disabled" : ""}>Rechazar pago</button>
+                          <button class="button small success" data-action="validate-ceneval" data-id="${applicant.id}" ${applicant.estado !== STATES.CENEVAL_PAYMENT_UPLOADED ? "disabled" : ""}>Validar comprobante CENEVAL</button>
+                          <button class="button small danger" data-action="reject-ceneval" data-id="${applicant.id}" ${applicant.estado !== STATES.CENEVAL_PAYMENT_UPLOADED ? "disabled" : ""}>Rechazar comprobante CENEVAL</button>
                           <button class="button small" data-action="capture-score" data-id="${applicant.id}" ${applicant.estado !== STATES.EVALUATION_PENDING ? "disabled" : ""}>Capturar puntaje</button>
                           <button class="button small success" data-action="mark-accepted" data-id="${applicant.id}" ${applicant.estado !== STATES.EVALUATED ? "disabled" : ""}>Aceptar</button>
                           <button class="button small warning" data-action="mark-rejected" data-id="${applicant.id}" ${applicant.estado !== STATES.EVALUATED ? "disabled" : ""}>No aceptar</button>
@@ -1242,6 +1284,9 @@
         ])}
         <section class="panel">
           <h3>Lista de aceptados</h3>
+          <div class="notice">
+            Cuando Admisiones marca a un aspirante como aceptado, aparece automaticamente en esta lista. Aqui se revisan archivos simulados, se valida el pago de inscripcion y, si todo esta completo, se da de alta como alumno.
+          </div>
           ${Views.enrollmentTable(accepted)}
         </section>
       `;
@@ -1271,18 +1316,23 @@
                       </td>
                       <td>${Components.statusBadge(applicant.estado)}</td>
                       <td>${Views.docsMini(applicant)}</td>
-                      <td>${Components.paymentLabel(applicant.pagoInscripcion.estatus)}</td>
+                      <td>
+                        ${Components.paymentLabel(applicant.pagoInscripcion.estatus)}
+                        <div class="muted">${applicant.pagoInscripcion.referencia || "Sin referencia"}${applicant.pagoInscripcion.comprobante ? " - comprobante cargado" : ""}</div>
+                      </td>
                       <td>
                         <div class="table-actions">
                           ${Utils.list(
                             applicant.documentos.map(
                               (doc, index) => `
+                                <button class="button small secondary" data-action="preview-document" data-id="${applicant.id}" data-doc="${index}" ${!doc.fileName ? "disabled" : ""}>Ver doc ${index + 1}</button>
                                 <button class="button small success" data-action="validate-document" data-id="${applicant.id}" data-doc="${index}" ${doc.status !== "cargado" && doc.status !== "no_valido" ? "disabled" : ""}>Validar ${index + 1}</button>
                                 <button class="button small danger" data-action="reject-document" data-id="${applicant.id}" data-doc="${index}" ${doc.status !== "cargado" ? "disabled" : ""}>Rechazar ${index + 1}</button>
                               `
                             )
                           )}
-                          <button class="button small success" data-action="validate-enrollment-payment" data-id="${applicant.id}" ${applicant.pagoInscripcion.estatus !== "comprobante_cargado" || !Rules.allDocumentsValid(applicant) ? "disabled" : ""}>Validar pago</button>
+                          <button class="button small secondary" data-action="preview-enrollment-payment" data-id="${applicant.id}" ${!applicant.pagoInscripcion.comprobante ? "disabled" : ""}>Ver pago</button>
+                          <button class="button small success" data-action="validate-enrollment-payment" data-id="${applicant.id}" ${applicant.pagoInscripcion.estatus !== "comprobante_cargado" || !Rules.allDocumentsValid(applicant) ? "disabled" : ""}>Validar pago inscripcion</button>
                           <button class="button small" data-action="enroll-student" data-id="${applicant.id}" ${!Rules.canEnroll(applicant) ? "disabled" : ""}>Dar de alta</button>
                         </div>
                       </td>
@@ -1296,7 +1346,12 @@
       `;
     },
     docsMini(applicant) {
-      return Utils.list(applicant.documentos.map((doc, index) => `<div>${index + 1}. ${doc.name}: ${Components.documentLabel(doc.status)}</div>`));
+      return Utils.list(
+        applicant.documentos.map(
+          (doc, index) =>
+            `<div>${index + 1}. ${doc.name}: ${Components.documentLabel(doc.status)}<span class="muted"> - ${doc.fileName || "sin archivo"}</span></div>`
+        )
+      );
     },
     academicDirectorPanel() {
       const requests = Selectors.careerRequests();
@@ -1308,7 +1363,7 @@
       }));
 
       return `
-        ${Components.heading("Director Academico", "Consulta avance por carrera, aceptados y solicitudes de cambio de carrera.")}
+        ${Components.heading("Director Academico", "Supervisa cuantos aspirantes, aceptados e inscritos hay por carrera y resuelve solicitudes de cambio de carrera.")}
         ${Components.metrics([
           ["Total aspirantes", state.applicants.length],
           ["Aceptados", state.applicants.filter((applicant) => Rules.acceptedStates().includes(applicant.estado)).length],
@@ -1316,6 +1371,9 @@
         ])}
         <section class="panel">
           <h3>Resumen por carrera</h3>
+          <div class="notice">
+            Esta vista es de supervision academica: no valida documentos ni pagos, solo permite revisar demanda, cupos y cambios de carrera.
+          </div>
           ${Views.careerSummaryTable(byCareer)}
         </section>
         <section class="panel">
@@ -1397,7 +1455,7 @@
       const accepted = applicants.filter((applicant) => Rules.acceptedStates().includes(applicant.estado));
 
       return `
-        ${Components.heading("Director de Carrera", "Consulta aspirantes, aceptados y grupos simulados de una carrera.")}
+        ${Components.heading("Director de Carrera", "Consulta aspirantes, aceptados, inscritos y avance contra los grupos proyectados de su carrera.")}
         <section class="panel">
           <div class="field">
             <label for="directorCareer">Carrera</label>
@@ -1414,6 +1472,9 @@
         ${Components.applicantTable(applicants, "Aspirantes de la carrera")}
         <section class="panel">
           <h3>Grupos simulados</h3>
+          <div class="notice">
+            Esta vista ayuda a comparar alumnos proyectados contra lugares disponibles. El director de carrera consulta el avance, pero no inscribe ni valida pagos desde aqui.
+          </div>
           ${Views.groups(state.directorCareer, accepted)}
         </section>
       `;
@@ -1477,6 +1538,9 @@
       render();
     },
     "reset-data": () => {
+      if (!window.confirm("Seguro que quieres reiniciar todos los datos? Esta accion restaura la informacion mock y borra los cambios hechos durante la prueba.")) {
+        return;
+      }
       Mutations.resetData();
       Toast.show("Datos de prueba reiniciados.");
     },
@@ -1504,12 +1568,14 @@
     },
     "validate-ceneval": (element) => {
       const applicant = Selectors.applicantById(element.dataset.id);
+      if (!window.confirm(`Confirmas que el comprobante CENEVAL de ${Rules.fullName(applicant)} fue revisado y es valido?`)) return;
       applicant.cenevalPago.estatus = "validado";
       Mutations.setApplicantState(applicant, STATES.EVALUATION_PENDING);
       Toast.show("Pago CENEVAL validado. El aspirante queda listo para capturar resultado.");
     },
     "reject-ceneval": (element) => {
       const applicant = Selectors.applicantById(element.dataset.id);
+      if (!window.confirm(`Seguro que quieres rechazar el comprobante CENEVAL de ${Rules.fullName(applicant)}?`)) return;
       applicant.cenevalPago.estatus = "rechazado";
       applicant.cenevalPago.comprobante = false;
       Mutations.setApplicantState(applicant, STATES.CENEVAL_PAYMENT_REJECTED);
@@ -1536,25 +1602,43 @@
       Toast.show("Resultado CENEVAL capturado.");
     },
     "mark-accepted": (element) => {
-      Mutations.setApplicantState(Selectors.applicantById(element.dataset.id), STATES.ACCEPTED);
+      const applicant = Selectors.applicantById(element.dataset.id);
+      if (!window.confirm(`El puntaje CENEVAL capturado es ${applicant.resultadoCeneval}. Confirmas que el puntaje es correcto y quieres aceptar al aspirante?`)) return;
+      Mutations.setApplicantState(applicant, STATES.ACCEPTED);
       Toast.show("Aspirante marcado como aceptado.");
     },
     "mark-rejected": (element) => {
-      Mutations.setApplicantState(Selectors.applicantById(element.dataset.id), STATES.NOT_ACCEPTED);
+      const applicant = Selectors.applicantById(element.dataset.id);
+      if (!window.confirm(`El puntaje CENEVAL capturado es ${applicant.resultadoCeneval}. Confirmas que el puntaje es correcto y quieres marcarlo como no aceptado?`)) return;
+      Mutations.setApplicantState(applicant, STATES.NOT_ACCEPTED);
       Toast.show("Aspirante marcado como no aceptado.");
     },
     "toggle-active": (element) => {
       const applicant = Selectors.applicantById(element.dataset.id);
+      const action = applicant.activo ? "desactivar" : "reactivar";
+      const warning = applicant.activo
+        ? "El expediente no se eliminara, pero el aspirante no podra continuar el proceso hasta ser reactivado."
+        : "El aspirante podra continuar nuevamente el proceso.";
+      if (!window.confirm(`Seguro que quieres ${action} a ${Rules.fullName(applicant)}? ${warning}`)) return;
       applicant.activo = !applicant.activo;
       if (!applicant.activo) Mutations.setApplicantState(applicant, STATES.INACTIVE);
       if (applicant.activo && applicant.estado === STATES.INACTIVE) Mutations.setApplicantState(applicant, STATES.REGISTERED);
       Toast.show(applicant.activo ? "Aspirante activado." : "Aspirante desactivado.");
     },
+    "preview-document": (element) => {
+      const applicant = Selectors.applicantById(element.dataset.id);
+      const doc = applicant.documentos[Number(element.dataset.doc)];
+      if (!doc.fileName) {
+        Toast.show("Este documento aun no tiene archivo cargado.");
+        return;
+      }
+      window.alert(`Vista previa simulada\n\nAspirante: ${Rules.fullName(applicant)}\nDocumento: ${doc.name}\nArchivo: ${doc.fileName}\nEstatus: ${Components.documentLabel(doc.status)}${doc.observation ? `\nObservacion: ${doc.observation}` : ""}`);
+    },
     "upload-document": (element) => {
       const applicant = Selectors.applicantById(element.dataset.id);
       const doc = applicant.documentos[Number(element.dataset.doc)];
       doc.status = "cargado";
-      doc.fileName = `${Utils.slugify(doc.name)}-${applicant.id}.pdf`;
+      doc.fileName = `${Utils.slugify(doc.name)}-${applicant.id}.${Utils.documentExtension(doc.name)}`;
       doc.observation = "";
       Mutations.refreshDocumentState(applicant);
       Toast.show("Documento cargado.");
@@ -1574,6 +1658,14 @@
       doc.observation = "Documento ilegible o incompleto.";
       Mutations.refreshDocumentState(applicant);
       Toast.show("Documento marcado como no valido.");
+    },
+    "preview-enrollment-payment": (element) => {
+      const applicant = Selectors.applicantById(element.dataset.id);
+      if (!applicant.pagoInscripcion.comprobante) {
+        Toast.show("El aspirante aun no ha cargado comprobante de inscripcion.");
+        return;
+      }
+      window.alert(`Comprobante de inscripcion simulado\n\nAspirante: ${Rules.fullName(applicant)}\nReferencia: ${applicant.pagoInscripcion.referencia}\nEstatus: ${Components.paymentLabel(applicant.pagoInscripcion.estatus)}\nRevision: comprobar referencia, monto y datos antes de validar.`);
     },
     "generate-enrollment-payment": (element) => {
       const applicant = Selectors.applicantById(element.dataset.id);
@@ -1602,6 +1694,7 @@
         Toast.show("No se puede validar pago: faltan documentos validos.");
         return;
       }
+      if (!window.confirm(`Confirmas que el comprobante de inscripcion de ${Rules.fullName(applicant)} coincide con referencia, monto y datos del aspirante?`)) return;
       applicant.pagoInscripcion.estatus = "validado";
       Mutations.setApplicantState(applicant, STATES.ENROLLMENT_PAYMENT_VALIDATED);
       Toast.show("Pago de inscripcion validado.");
@@ -1673,6 +1766,9 @@
     "change-career-form": (form) => {
       const formData = new FormData(form);
       const applicant = Selectors.applicantById(formData.get("applicantId"));
+      if (!window.confirm("Estas seguro de que quieres enviar la solicitud de cambio de carrera? Esta solicitud sera revisada por Direccion Academica y no garantiza el cambio.")) {
+        return;
+      }
       const request = {
         id: Date.now(),
         destino: formData.get("careerTarget"),

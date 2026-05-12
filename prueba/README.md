@@ -63,8 +63,11 @@ Si la pagina se ve sin diseno en celular, revisa que Render este sirviendo `styl
 
 - La aplicacion incluye una guia del proyecto, glosario y matriz de estados.
 - El prototipo inicia con acceso separado para aspirante e institucional.
+- El aspirante solo consulta el expediente asociado a su sesion; ya no ve la lista completa de aspirantes.
 - El pago de inscripcion esta separado de los documentos academicos.
+- Los documentos requeridos incluyen acta, certificado, comprobante de domicilio y foto del aspirante.
 - El registro valida CURP, correo, telefono, promedio y duplicidad de CURP.
+- Las acciones criticas muestran confirmacion antes de reiniciar datos, enviar cambio de carrera, aceptar/no aceptar, desactivar aspirantes o validar pagos.
 - No se captura resultado CENEVAL si el pago CENEVAL no fue validado.
 - No se genera ficha de inscripcion si los documentos obligatorios no estan validados.
 - No se inscribe al alumno si faltan documentos validos.
@@ -76,6 +79,8 @@ Si la pagina se ve sin diseno en celular, revisa que Render este sirviendo `styl
 
 - Se agregaron vistas compartidas: `Guia del proyecto`, `Matriz de estados` y `Reglas y permisos`.
 - Se agrego una pantalla inicial de acceso aspirante/institucional.
+- Se acoto el menu del aspirante a `Registro` y `Panel del aspirante`.
+- Se agregaron vistas previas simuladas para documentos y comprobante de inscripcion.
 - Se normalizaron conceptos como aspirante, aceptado, nuevo ingreso, alumno, folio y numero de control.
 - Se reforzo el flujo de estados para que el prototipo sea mas entendible.
 - Se documentaron dentro de la interfaz las reglas de negocio principales.

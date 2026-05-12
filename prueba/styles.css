@@ -258,6 +258,13 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.sidebar-help {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .nav-list {
   display: grid;
   gap: 8px;
@@ -528,6 +535,10 @@ tr:last-child td {
   line-height: 1.45;
 }
 
+.definition-list.compact div {
+  grid-template-columns: 110px 1fr;
+}
+
 .clean-list {
   display: grid;
   gap: 8px;
@@ -537,6 +548,7 @@ tr:last-child td {
 }
 
 .notice {
+  margin-bottom: 14px;
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;

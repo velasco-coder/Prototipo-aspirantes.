@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: utem_admisiones_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: utem_admisiones
+      POSTGRES_USER: utem
+      POSTGRES_PASSWORD: utem_dev_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - utem_postgres_data:/var/lib/postgresql/data
+      - ./01_esquema.sql:/docker-entrypoint-initdb.d/01_esquema.sql:ro
+      - ./02_datos_prueba.sql:/docker-entrypoint-initdb.d/02_datos_prueba.sql:ro
+      - ./03_vistas_consultas.sql:/docker-entrypoint-initdb.d/03_vistas_consultas.sql:ro
+
+  adminer:
+    image: adminer:4
+    container_name: utem_admisiones_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  utem_postgres_data:
+
