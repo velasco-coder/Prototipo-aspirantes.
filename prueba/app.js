@@ -206,6 +206,10 @@
       ],
     },
     maxCenevalScore: 1300,
+    whatsappSupport: {
+      phone: "523141466523",
+      message: "Hola, quiero informacion sobre mi proceso de admision.",
+    },
   });
 
   const Utils = {
@@ -698,6 +702,7 @@
         state.role === "aspirante"
           ? "El reinicio solo sirve para esta demostracion: restaura los datos mock y borra cambios hechos durante la prueba."
           : "Modo prueba: restaura aspirantes, pagos y documentos simulados.";
+      const whatsappUrl = `https://wa.me/${CONFIG.whatsappSupport.phone}?text=${encodeURIComponent(CONFIG.whatsappSupport.message)}`;
       return `
         <aside class="sidebar">
           <p class="sidebar-title">Menu de prueba</p>
@@ -716,6 +721,17 @@
             <button class="button secondary" data-action="reset-data">Reiniciar datos</button>
           </div>
           <p class="sidebar-help">${resetHelp}</p>
+          ${
+            state.role === "aspirante"
+              ? `
+                <div class="support-box">
+                  <p class="sidebar-title">Preguntas</p>
+                  <p class="sidebar-help">Contacta al area de admision por WhatsApp para dudas del proceso.</p>
+                  <a class="button whatsapp-button" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Contactar por WhatsApp</a>
+                </div>
+              `
+              : ""
+          }
         </aside>
       `;
     },

@@ -265,6 +265,32 @@ button:disabled {
   line-height: 1.4;
 }
 
+.support-box {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.support-box .sidebar-title,
+.support-box .sidebar-help {
+  margin: 0;
+}
+
+.whatsapp-button {
+  width: 100%;
+  justify-content: center;
+  background: #1f8f5f;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.whatsapp-button:hover {
+  background: #176b48;
+  color: #ffffff;
+}
+
 .nav-list {
   display: grid;
   gap: 8px;
