@@ -350,6 +350,12 @@ CREATE TABLE IF NOT EXISTS auditoria_eventos (
 CREATE INDEX IF NOT EXISTS ix_auditoria_usuario ON auditoria_eventos (usuario_id, creado_en DESC);
 CREATE INDEX IF NOT EXISTS ix_auditoria_aspirante ON auditoria_eventos (aspirante_id, creado_en DESC);
 
+CREATE TABLE IF NOT EXISTS prototipo_estado (
+  id TEXT PRIMARY KEY,
+  datos JSONB NOT NULL,
+  actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE OR REPLACE FUNCTION admision.fn_set_actualizado_en()
 RETURNS TRIGGER AS $$
 BEGIN

@@ -65,6 +65,7 @@ Al iniciar por primera vez, Docker ejecuta automaticamente `01_esquema.sql`, `02
 - Historial de estados
 - Transicion de estado
 - Auditoria de eventos
+- Estado JSONB del prototipo
 
 ## Decisiones de diseno
 
@@ -76,6 +77,7 @@ Al iniciar por primera vez, Docker ejecuta automaticamente `01_esquema.sql`, `02
 6. El certificado de bachillerato permite fecha limite y prorroga, porque en la practica algunas preparatorias lo entregan tarde.
 7. Los archivos no se guardan como binarios en la base; se guardan nombre, ruta o URL del archivo.
 8. Las contrasenas no deben guardarse en texto plano; el campo correcto es `contrasena_hash`.
+9. Para conectar rapido el prototipo actual sin reescribirlo completo, se agrego `prototipo_estado`, una tabla JSONB que guarda el estado completo de la maqueta mientras se migra a Laravel.
 
 ## Documentos obligatorios seed
 

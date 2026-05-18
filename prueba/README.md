@@ -6,11 +6,38 @@ Aplicacion estatica para simular el flujo principal de admision:
 
 ## Como ejecutarlo
 
+### Modo con PostgreSQL
+
+1. Instala dependencias:
+
+```bash
+cd prueba
+npm install
+```
+
+2. Crea `.env` a partir de `.env.example`. Para PostgreSQL local con usuario `postgres`, reemplaza `TU_CONTRASENA` por tu contrasena local:
+
+```txt
+DATABASE_URL=postgresql://postgres:TU_CONTRASENA@localhost:5432/utem_admisiones
+```
+
+3. Inicia el servidor:
+
+```bash
+npm run dev
+```
+
+4. Abre `http://localhost:3000`.
+
+El servidor crea la base `utem_admisiones` si no existe y guarda el estado del prototipo en PostgreSQL.
+
+### Modo estatico
+
 1. Abre `index.html` en tu navegador.
 2. Inicia sesion con alguna cuenta de prueba.
 3. Usa los datos mock incluidos para probar el flujo.
 
-No usa base de datos, backend, APIs externas ni autenticacion real. El inicio de sesion es simulado con credenciales mock dentro del codigo. Todos los cambios viven en memoria y se pierden al recargar la pagina.
+En modo estatico no usa base de datos, backend, APIs externas ni autenticacion real. El inicio de sesion es simulado con credenciales mock dentro del codigo. Todos los cambios viven en memoria y se pierden al recargar la pagina.
 
 ## Credenciales de prueba
 
@@ -24,31 +51,31 @@ No usa base de datos, backend, APIs externas ni autenticacion real. El inicio de
 
 ## Como subirlo a GitHub y Render
 
-La guia completa esta en `DEPLOY_GITHUB_RENDER.md`.
-
-Para Render, este prototipo se publica como `Static Site`. No requiere comando de build. Si subes solo esta carpeta como repositorio, usa:
+Para la version con PostgreSQL, este prototipo se publica como `Web Service` de Node. Si subes solo esta carpeta como repositorio, usa:
 
 ```txt
-Build Command: dejar vacio
-Publish Directory: .
+Build Command: npm install
+Start Command: npm start
 ```
 
 Si subes todo el proyecto completo, en Render usa:
 
 ```txt
 Root Directory: prueba
-Build Command: dejar vacio
-Publish Directory: .
+Build Command: npm install
+Start Command: npm start
 ```
 
-Si la pagina se ve sin diseno en celular, revisa que Render este sirviendo `styles.css`. Abre `/styles.css` en tu URL de Render; si no aparece codigo CSS, corrige `Root Directory` a `prueba`.
+Tambien debes configurar `DATABASE_URL` con la cadena de conexion de PostgreSQL. Si no se configura, la app abre, pero trabaja en modo local sin persistencia.
 
 ## Archivos
 
 - `index.html`: entrada de la aplicacion.
 - `styles.css`: estilos del prototipo.
 - `app.js`: datos mock, reglas de negocio y renderizado.
-- `DEPLOY_GITHUB_RENDER.md`: pasos para subir a GitHub y publicar en Render.
+- `server.js`: backend local con Express y PostgreSQL.
+- `.env.example`: ejemplo de conexion PostgreSQL.
+- `package.json`: dependencias y scripts de ejecucion.
 - `render.yaml`: configuracion opcional para Render Blueprint.
 
 ## Roles simulados

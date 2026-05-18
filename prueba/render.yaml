@@ -1,11 +1,9 @@
 services:
   - type: web
     name: aspirantes-utem-prueba
-    runtime: static
-    buildCommand: ""
-    staticPublishPath: .
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false

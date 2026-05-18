@@ -291,6 +291,35 @@ button:disabled {
   color: #ffffff;
 }
 
+.storage-status {
+  display: grid;
+  gap: 3px;
+  margin-top: 14px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  font-size: 12px;
+}
+
+.storage-status strong {
+  color: var(--ink);
+}
+
+.storage-status span {
+  color: var(--muted);
+}
+
+.storage-status.ok {
+  border-color: #9fcfb5;
+  background: #edf8f2;
+}
+
+.storage-status.warn {
+  border-color: #e8cc8b;
+  background: #fff8e8;
+}
+
 .nav-list {
   display: grid;
   gap: 8px;

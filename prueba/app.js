@@ -410,6 +410,13 @@
     filter: "",
     toast: "",
     validationErrors: [],
+    storage: {
+      connected: false,
+      loaded: false,
+      saving: false,
+      message: "Datos locales en memoria",
+      lastSaved: "",
+    },
     applicants: Factory.applicants(),
   };
 
@@ -721,6 +728,7 @@
             <button class="button secondary" data-action="reset-data">Reiniciar datos</button>
           </div>
           <p class="sidebar-help">${resetHelp}</p>
+          ${Components.storageStatus()}
           ${
             state.role === "aspirante"
               ? `
@@ -782,6 +790,16 @@
         <section class="grid three">
           ${Utils.list(items.map(([label, value]) => `<div class="metric"><strong>${value}</strong><span>${label}</span></div>`))}
         </section>
+      `;
+    },
+    storageStatus() {
+      const statusClass = state.storage.connected ? "ok" : "warn";
+      const detail = state.storage.lastSaved ? `Ultimo guardado: ${state.storage.lastSaved}` : state.storage.message;
+      return `
+        <div class="storage-status ${statusClass}">
+          <strong>${state.storage.connected ? "PostgreSQL activo" : "Sin conexion PostgreSQL"}</strong>
+          <span>${detail}</span>
+        </div>
       `;
     },
     filter() {
@@ -1521,6 +1539,66 @@
     },
   };
 
+  const ActionHelpers = {
+    applicant(element) {
+      return Selectors.applicantById(element.dataset.id);
+    },
+    documentContext(element) {
+      const applicant = ActionHelpers.applicant(element);
+      return {
+        applicant,
+        doc: applicant.documentos[Number(element.dataset.doc)],
+      };
+    },
+    careerRequestContext(element) {
+      const applicant = ActionHelpers.applicant(element);
+      return {
+        applicant,
+        request: applicant.solicitudesCambio.find((item) => item.id === Number(element.dataset.request)),
+      };
+    },
+    documentFileName(applicant, doc) {
+      return `${Utils.slugify(doc.name)}-${applicant.id}.${Utils.documentExtension(doc.name)}`;
+    },
+  };
+
+  const Dialogs = {
+    confirmReset() {
+      return window.confirm("Seguro que quieres reiniciar todos los datos? Esta accion restaura la informacion mock y borra los cambios hechos durante la prueba.");
+    },
+    confirmCenevalValidation(applicant) {
+      return window.confirm(`Confirmas que el comprobante CENEVAL de ${Rules.fullName(applicant)} fue revisado y es valido?`);
+    },
+    confirmCenevalRejection(applicant) {
+      return window.confirm(`Seguro que quieres rechazar el comprobante CENEVAL de ${Rules.fullName(applicant)}?`);
+    },
+    confirmAdmissionDecision(applicant, decisionText) {
+      return window.confirm(`El puntaje CENEVAL capturado es ${applicant.resultadoCeneval}. Confirmas que el puntaje es correcto y quieres ${decisionText}?`);
+    },
+    confirmActiveToggle(applicant) {
+      const action = applicant.activo ? "desactivar" : "reactivar";
+      const warning = applicant.activo
+        ? "El expediente no se eliminara, pero el aspirante no podra continuar el proceso hasta ser reactivado."
+        : "El aspirante podra continuar nuevamente el proceso.";
+      return window.confirm(`Seguro que quieres ${action} a ${Rules.fullName(applicant)}? ${warning}`);
+    },
+    confirmEnrollmentPayment(applicant) {
+      return window.confirm(`Confirmas que el comprobante de inscripcion de ${Rules.fullName(applicant)} coincide con referencia, monto y datos del aspirante?`);
+    },
+    confirmCareerChange() {
+      return window.confirm("Estas seguro de que quieres enviar la solicitud de cambio de carrera? Esta solicitud sera revisada por Direccion Academica y no garantiza el cambio.");
+    },
+    promptCenevalScore(applicant) {
+      return window.prompt("Puntaje CENEVAL:", applicant.resultadoCeneval || "900");
+    },
+    previewDocument(applicant, doc) {
+      window.alert(`Vista previa simulada\n\nAspirante: ${Rules.fullName(applicant)}\nDocumento: ${doc.name}\nArchivo: ${doc.fileName}\nEstatus: ${Components.documentLabel(doc.status)}${doc.observation ? `\nObservacion: ${doc.observation}` : ""}`);
+    },
+    previewEnrollmentPayment(applicant) {
+      window.alert(`Comprobante de inscripcion simulado\n\nAspirante: ${Rules.fullName(applicant)}\nReferencia: ${applicant.pagoInscripcion.referencia}\nEstatus: ${Components.paymentLabel(applicant.pagoInscripcion.estatus)}\nRevision: comprobar referencia, monto y datos antes de validar.`);
+    },
+  };
+
   const Actions = {
     "set-login-type": (element) => {
       state.loginAccessType = element.dataset.type;
@@ -1554,14 +1632,12 @@
       render();
     },
     "reset-data": () => {
-      if (!window.confirm("Seguro que quieres reiniciar todos los datos? Esta accion restaura la informacion mock y borra los cambios hechos durante la prueba.")) {
-        return;
-      }
+      if (!Dialogs.confirmReset()) return;
       Mutations.resetData();
       Toast.show("Datos de prueba reiniciados.");
     },
     "generate-ceneval": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
+      const applicant = ActionHelpers.applicant(element);
       if (!Rules.canGenerateCeneval(applicant)) {
         Toast.show("No se puede generar ficha CENEVAL para este estado.");
         return;
@@ -1572,7 +1648,7 @@
       Toast.show("Ficha CENEVAL generada.");
     },
     "upload-ceneval": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
+      const applicant = ActionHelpers.applicant(element);
       if (!Rules.canUploadCeneval(applicant)) {
         Toast.show("No se puede cargar comprobante CENEVAL en este momento.");
         return;
@@ -1583,28 +1659,28 @@
       Toast.show("Comprobante CENEVAL cargado.");
     },
     "validate-ceneval": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      if (!window.confirm(`Confirmas que el comprobante CENEVAL de ${Rules.fullName(applicant)} fue revisado y es valido?`)) return;
+      const applicant = ActionHelpers.applicant(element);
+      if (!Dialogs.confirmCenevalValidation(applicant)) return;
       applicant.cenevalPago.estatus = "validado";
       Mutations.setApplicantState(applicant, STATES.EVALUATION_PENDING);
       Toast.show("Pago CENEVAL validado. El aspirante queda listo para capturar resultado.");
     },
     "reject-ceneval": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      if (!window.confirm(`Seguro que quieres rechazar el comprobante CENEVAL de ${Rules.fullName(applicant)}?`)) return;
+      const applicant = ActionHelpers.applicant(element);
+      if (!Dialogs.confirmCenevalRejection(applicant)) return;
       applicant.cenevalPago.estatus = "rechazado";
       applicant.cenevalPago.comprobante = false;
       Mutations.setApplicantState(applicant, STATES.CENEVAL_PAYMENT_REJECTED);
       Toast.show("Pago CENEVAL rechazado.");
     },
     "capture-score": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
+      const applicant = ActionHelpers.applicant(element);
       if (applicant.cenevalPago.estatus !== "validado") {
         Toast.show("No se puede capturar resultado sin pago CENEVAL validado.");
         return;
       }
 
-      const score = window.prompt("Puntaje CENEVAL:", applicant.resultadoCeneval || "900");
+      const score = Dialogs.promptCenevalScore(applicant);
       if (!score) return;
 
       const parsedScore = Number(score);
@@ -1618,73 +1694,65 @@
       Toast.show("Resultado CENEVAL capturado.");
     },
     "mark-accepted": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      if (!window.confirm(`El puntaje CENEVAL capturado es ${applicant.resultadoCeneval}. Confirmas que el puntaje es correcto y quieres aceptar al aspirante?`)) return;
+      const applicant = ActionHelpers.applicant(element);
+      if (!Dialogs.confirmAdmissionDecision(applicant, "aceptar al aspirante")) return;
       Mutations.setApplicantState(applicant, STATES.ACCEPTED);
       Toast.show("Aspirante marcado como aceptado.");
     },
     "mark-rejected": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      if (!window.confirm(`El puntaje CENEVAL capturado es ${applicant.resultadoCeneval}. Confirmas que el puntaje es correcto y quieres marcarlo como no aceptado?`)) return;
+      const applicant = ActionHelpers.applicant(element);
+      if (!Dialogs.confirmAdmissionDecision(applicant, "marcarlo como no aceptado")) return;
       Mutations.setApplicantState(applicant, STATES.NOT_ACCEPTED);
       Toast.show("Aspirante marcado como no aceptado.");
     },
     "toggle-active": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      const action = applicant.activo ? "desactivar" : "reactivar";
-      const warning = applicant.activo
-        ? "El expediente no se eliminara, pero el aspirante no podra continuar el proceso hasta ser reactivado."
-        : "El aspirante podra continuar nuevamente el proceso.";
-      if (!window.confirm(`Seguro que quieres ${action} a ${Rules.fullName(applicant)}? ${warning}`)) return;
+      const applicant = ActionHelpers.applicant(element);
+      if (!Dialogs.confirmActiveToggle(applicant)) return;
       applicant.activo = !applicant.activo;
       if (!applicant.activo) Mutations.setApplicantState(applicant, STATES.INACTIVE);
       if (applicant.activo && applicant.estado === STATES.INACTIVE) Mutations.setApplicantState(applicant, STATES.REGISTERED);
       Toast.show(applicant.activo ? "Aspirante activado." : "Aspirante desactivado.");
     },
     "preview-document": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      const doc = applicant.documentos[Number(element.dataset.doc)];
+      const { applicant, doc } = ActionHelpers.documentContext(element);
       if (!doc.fileName) {
         Toast.show("Este documento aun no tiene archivo cargado.");
         return;
       }
-      window.alert(`Vista previa simulada\n\nAspirante: ${Rules.fullName(applicant)}\nDocumento: ${doc.name}\nArchivo: ${doc.fileName}\nEstatus: ${Components.documentLabel(doc.status)}${doc.observation ? `\nObservacion: ${doc.observation}` : ""}`);
+      Dialogs.previewDocument(applicant, doc);
     },
     "upload-document": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      const doc = applicant.documentos[Number(element.dataset.doc)];
+      const { applicant, doc } = ActionHelpers.documentContext(element);
       doc.status = "cargado";
-      doc.fileName = `${Utils.slugify(doc.name)}-${applicant.id}.${Utils.documentExtension(doc.name)}`;
+      doc.fileName = ActionHelpers.documentFileName(applicant, doc);
       doc.observation = "";
       Mutations.refreshDocumentState(applicant);
       Toast.show("Documento cargado.");
     },
     "validate-document": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      const doc = applicant.documentos[Number(element.dataset.doc)];
+      const { applicant, doc } = ActionHelpers.documentContext(element);
       doc.status = "valido";
       doc.observation = "";
       Mutations.refreshDocumentState(applicant);
       Toast.show("Documento validado.");
     },
     "reject-document": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      const doc = applicant.documentos[Number(element.dataset.doc)];
+      const { applicant, doc } = ActionHelpers.documentContext(element);
       doc.status = "no_valido";
       doc.observation = "Documento ilegible o incompleto.";
       Mutations.refreshDocumentState(applicant);
       Toast.show("Documento marcado como no valido.");
     },
     "preview-enrollment-payment": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
+      const applicant = ActionHelpers.applicant(element);
       if (!applicant.pagoInscripcion.comprobante) {
         Toast.show("El aspirante aun no ha cargado comprobante de inscripcion.");
         return;
       }
-      window.alert(`Comprobante de inscripcion simulado\n\nAspirante: ${Rules.fullName(applicant)}\nReferencia: ${applicant.pagoInscripcion.referencia}\nEstatus: ${Components.paymentLabel(applicant.pagoInscripcion.estatus)}\nRevision: comprobar referencia, monto y datos antes de validar.`);
+      Dialogs.previewEnrollmentPayment(applicant);
     },
     "generate-enrollment-payment": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
+      const applicant = ActionHelpers.applicant(element);
       if (!Rules.canGenerateEnrollmentPayment(applicant)) {
         Toast.show("No se puede generar ficha: primero valida todos los documentos.");
         return;
@@ -1695,7 +1763,7 @@
       Toast.show("Ficha de inscripcion generada.");
     },
     "upload-enrollment-payment": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
+      const applicant = ActionHelpers.applicant(element);
       if (!Rules.canUploadEnrollmentPayment(applicant)) {
         Toast.show("No se puede cargar comprobante de inscripcion en este momento.");
         return;
@@ -1705,18 +1773,18 @@
       Toast.show("Comprobante de inscripcion cargado.");
     },
     "validate-enrollment-payment": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
+      const applicant = ActionHelpers.applicant(element);
       if (!Rules.allDocumentsValid(applicant)) {
         Toast.show("No se puede validar pago: faltan documentos validos.");
         return;
       }
-      if (!window.confirm(`Confirmas que el comprobante de inscripcion de ${Rules.fullName(applicant)} coincide con referencia, monto y datos del aspirante?`)) return;
+      if (!Dialogs.confirmEnrollmentPayment(applicant)) return;
       applicant.pagoInscripcion.estatus = "validado";
       Mutations.setApplicantState(applicant, STATES.ENROLLMENT_PAYMENT_VALIDATED);
       Toast.show("Pago de inscripcion validado.");
     },
     "enroll-student": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
+      const applicant = ActionHelpers.applicant(element);
       if (!Rules.allDocumentsValid(applicant)) {
         Toast.show("No se puede inscribir: faltan documentos validos.");
         return;
@@ -1731,16 +1799,14 @@
       Toast.show("Alumno dado de alta.");
     },
     "accept-career-request": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      const request = applicant.solicitudesCambio.find((item) => item.id === Number(element.dataset.request));
+      const { applicant, request } = ActionHelpers.careerRequestContext(element);
       request.estatus = "aceptada";
       request.respuesta = "Solicitud aceptada por Direccion Academica.";
       applicant.carrera = request.destino;
       Toast.show("Cambio de carrera aceptado.");
     },
     "reject-career-request": (element) => {
-      const applicant = Selectors.applicantById(element.dataset.id);
-      const request = applicant.solicitudesCambio.find((item) => item.id === Number(element.dataset.request));
+      const { request } = ActionHelpers.careerRequestContext(element);
       request.estatus = "rechazada";
       request.respuesta = "Solicitud rechazada por cupo o criterios academicos.";
       Toast.show("Cambio de carrera rechazado.");
@@ -1782,9 +1848,7 @@
     "change-career-form": (form) => {
       const formData = new FormData(form);
       const applicant = Selectors.applicantById(formData.get("applicantId"));
-      if (!window.confirm("Estas seguro de que quieres enviar la solicitud de cambio de carrera? Esta solicitud sera revisada por Direccion Academica y no garantiza el cambio.")) {
-        return;
-      }
+      if (!Dialogs.confirmCareerChange()) return;
       const request = {
         id: Date.now(),
         destino: formData.get("careerTarget"),
@@ -1798,6 +1862,103 @@
     },
   };
 
+  const Api = {
+    async request(path, options = {}) {
+      const response = await fetch(path, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Error HTTP ${response.status}`);
+      }
+
+      return response.json();
+    },
+    normalizeSelection() {
+      if (!Selectors.applicantById(state.selectedApplicantId)) {
+        state.selectedApplicantId = state.applicants[0]?.id || 1;
+      }
+
+      if (state.session?.role === "aspirante" && state.session.applicantId && !Selectors.applicantById(state.session.applicantId)) {
+        state.session.applicantId = state.applicants[0]?.id || null;
+      }
+    },
+    async loadApplicants() {
+      try {
+        const data = await Api.request("/api/prototype-state");
+        state.storage.connected = true;
+        state.storage.loaded = true;
+        state.storage.message = "Datos cargados desde PostgreSQL";
+
+        if (Array.isArray(data.applicants)) {
+          state.applicants = data.applicants;
+          Api.normalizeSelection();
+        } else {
+          await Api.saveApplicants();
+        }
+      } catch (error) {
+        state.storage.connected = false;
+        state.storage.loaded = true;
+        state.storage.message = "Modo local: backend PostgreSQL no disponible";
+        console.warn("No se pudo cargar PostgreSQL:", error.message);
+      }
+
+      render();
+    },
+    async saveApplicants() {
+      if (!state.storage.connected) return;
+
+      state.storage.saving = true;
+      try {
+        await Api.request("/api/prototype-state", {
+          method: "PUT",
+          body: JSON.stringify({ applicants: state.applicants }),
+        });
+        state.storage.lastSaved = new Date().toLocaleTimeString("es-MX", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        state.storage.message = "Datos guardados en PostgreSQL";
+      } catch (error) {
+        state.storage.connected = false;
+        state.storage.message = "No se pudo guardar en PostgreSQL";
+        console.warn("No se pudo guardar PostgreSQL:", error.message);
+      } finally {
+        state.storage.saving = false;
+        render();
+      }
+    },
+  };
+
+  const PERSISTENT_ACTIONS = new Set([
+    "reset-data",
+    "generate-ceneval",
+    "upload-ceneval",
+    "validate-ceneval",
+    "reject-ceneval",
+    "capture-score",
+    "mark-accepted",
+    "mark-rejected",
+    "toggle-active",
+    "upload-document",
+    "validate-document",
+    "reject-document",
+    "generate-enrollment-payment",
+    "upload-enrollment-payment",
+    "validate-enrollment-payment",
+    "enroll-student",
+    "accept-career-request",
+    "reject-career-request",
+  ]);
+
+  const PERSISTENT_FORMS = new Set(["registration-form", "change-career-form"]);
+
   const Events = {
     bind() {
       document.addEventListener("click", Events.onClick);
@@ -1809,8 +1970,10 @@
       const element = event.target.closest("[data-action]");
       if (!element) return;
 
-      const handler = Actions[element.dataset.action];
+      const { action } = element.dataset;
+      const handler = Actions[action];
       if (handler) handler(element);
+      if (PERSISTENT_ACTIONS.has(action)) Api.saveApplicants();
     },
     onInput(event) {
       if (event.target.dataset.action !== "filter") return;
@@ -1836,6 +1999,7 @@
 
       event.preventDefault();
       handler(event.target);
+      if (PERSISTENT_FORMS.has(event.target.id)) Api.saveApplicants();
     },
   };
 
@@ -1876,6 +2040,11 @@
     `;
   }
 
-  Events.bind();
-  render();
+  async function boot() {
+    Events.bind();
+    render();
+    await Api.loadApplicants();
+  }
+
+  boot();
 })();
