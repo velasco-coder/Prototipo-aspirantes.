@@ -9,6 +9,7 @@ RUN apt-get update \
         git \
         curl \
     && docker-php-ext-install pdo_pgsql pgsql zip opcache \
+    && rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default /etc/nginx/conf.d/default.conf \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -24,7 +25,7 @@ RUN composer dump-autoload --optimize \
     && mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/nginx.conf /etc/nginx/sites-enabled/default
 COPY deploy/start.sh /usr/local/bin/start.sh
 
 RUN chmod +x /usr/local/bin/start.sh
