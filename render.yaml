@@ -5,7 +5,6 @@ services:
     plan: free
     dockerfilePath: ./modulo-seguimiento-aspirantes/Dockerfile
     dockerContext: ./modulo-seguimiento-aspirantes
-    preDeployCommand: php artisan migrate --force && php artisan db:seed --force
     envVars:
       - key: APP_NAME
         value: Modulo Seguimiento Aspirantes
