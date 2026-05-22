@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: modulo-seguimiento-aspirantes
+    runtime: docker
+    plan: free
+    dockerfilePath: ./modulo-seguimiento-aspirantes/Dockerfile
+    dockerContext: ./modulo-seguimiento-aspirantes
+    preDeployCommand: php artisan migrate --force && php artisan db:seed --force
+    envVars:
+      - key: APP_NAME
+        value: Modulo Seguimiento Aspirantes
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        sync: false
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: modulo-seguimiento-aspirantes-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: modulo-seguimiento-aspirantes-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: modulo-seguimiento-aspirantes-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: modulo-seguimiento-aspirantes-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: modulo-seguimiento-aspirantes-db
+          property: password
+
+databases:
+  - name: modulo-seguimiento-aspirantes-db
+    plan: free
+    databaseName: utem_seguimiento_aspirantes
+    user: utem_seguimiento_user
